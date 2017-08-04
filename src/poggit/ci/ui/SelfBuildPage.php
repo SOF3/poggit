@@ -24,8 +24,6 @@ use poggit\account\Session;
 use poggit\Meta;
 
 class SelfBuildPage extends RepoListBuildPage {
-    private $rawRepos;
-
     public function __construct() {
         if(!Session::getInstance()->isLoggedIn()) {
             throw new RecentBuildPage;
@@ -84,8 +82,9 @@ class SelfBuildPage extends RepoListBuildPage {
      * @return \stdClass[]
      */
     protected function getRepos(): array {
-        $this->rawRepos = $this->getReposByGhApi("user/repos?per_page=" . Meta::getCurlPerPage(), Session::getInstance()->getAccessToken());
-        return $this->rawRepos;
+        $rawRepos = $this->getReposByGhApi("user/repos?per_page=" . Meta::getCurlPerPage(), Session::getInstance()->getAccessToken());
+        echo json_encode($rawRepos, JSON_PRETTY_PRINT);
+        return $rawRepos;
     }
 
     protected function throwNoRepos() {
