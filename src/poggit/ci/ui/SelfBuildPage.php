@@ -83,7 +83,6 @@ class SelfBuildPage extends RepoListBuildPage {
      */
     protected function getRepos(): array {
         $rawRepos = $this->getReposByGhApi("user/repos?per_page=" . Meta::getCurlPerPage(), Session::getInstance()->getAccessToken());
-        echo json_encode($rawRepos, JSON_PRETTY_PRINT);
         return $rawRepos;
     }
 
