@@ -21,7 +21,7 @@
 namespace poggit\webhook;
 
 use poggit\ci\builder\ProjectBuilder;
-use poggit\ci\cause\V2PullRequestBuildCause;
+use poggit\ci\cause\PullRequestCause;
 use poggit\ci\RepoZipball;
 use poggit\Meta;
 use poggit\utils\internet\Curl;
@@ -107,10 +107,9 @@ class PullRequestHandler extends WebhookHandler {
             $changedFiles[] = $file->filename;
         }
 
-        $cause = new V2PullRequestBuildCause();
-        $cause->repoId = $repo->id;
+        $cause = new PullRequestCause();
         $cause->prNumber = $pr->number;
-        $cause->commit = $pr->head->sha;
+        $cause->headOwner = $pr->head->
 
         ProjectBuilder::buildProjects($zipball, $repo, $projects, $commitMessages, $changedFiles, $cause, $this->data->sender->id, function (WebhookProjectModel $project): int {
             return ++$project->prBuilds;

@@ -20,7 +20,7 @@
 
 namespace poggit\ci\ui;
 
-use poggit\account\Session;use poggit\ci\builder\ProjectBuilder;use poggit\ci\cause\V2BuildCause;use poggit\ci\lint\BuildResult;use poggit\Mbd;use poggit\Meta;use poggit\module\VarPage;use poggit\utils\internet\Curl;use poggit\utils\internet\GitHubAPIException;use poggit\utils\internet\Mysql;
+use poggit\account\Session;use poggit\ci\builder\ProjectBuilder;use poggit\ci\cause\BuildCause;use poggit\ci\lint\BuildResult;use poggit\Mbd;use poggit\Meta;use poggit\module\VarPage;use poggit\utils\internet\Curl;use poggit\utils\internet\GitHubAPIException;use poggit\utils\internet\Mysql;
 
 class BuildBuildPage extends VarPage {
     /** @var string|null */
@@ -152,7 +152,7 @@ EOD
         $object = json_decode($this->build["buildCause"]);
 
         self::$projectPath = $this->build["projectPath"];
-        $cause = V2BuildCause::unserialize($object);
+        $cause = BuildCause::unserialize($object);
         $cause->echoHtml();
         self::$projectPath = null;
         ?>

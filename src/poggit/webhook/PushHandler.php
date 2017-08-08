@@ -21,7 +21,7 @@
 namespace poggit\webhook;
 
 use poggit\ci\builder\ProjectBuilder;
-use poggit\ci\cause\V2PushBuildCause;
+use poggit\ci\cause\PushBuildCause;
 use poggit\ci\RepoZipball;
 use poggit\Meta;
 use poggit\utils\internet\Mysql;
@@ -147,7 +147,7 @@ class PushHandler extends WebhookHandler {
                 $changedFiles[$file] = true;
             }
         }
-        $cause = new V2PushBuildCause();
+        $cause = new PushBuildCause();
         $cause->repoId = $repo->id;
         $cause->commit = $this->data->after;
         ProjectBuilder::buildProjects($zipball, $repo, $projects, array_map(function ($commit): string {

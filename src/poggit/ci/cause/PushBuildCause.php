@@ -25,7 +25,7 @@ use poggit\Mbd;
 use poggit\Meta;
 use poggit\utils\internet\Curl;
 
-class V2PushBuildCause extends V2BuildCause {
+class PushBuildCause extends BuildCause {
     /** @var int */
     public $repoId;
     /** @var string */

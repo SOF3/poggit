@@ -66,7 +66,10 @@ CREATE TABLE builds (
     class TINYINT, -- Dev = 1, PR = 4
     branch VARCHAR(255) DEFAULT 'master',
     sha CHAR(40),
-    cause VARCHAR(8191),
+    triggerEvent VARCHAR(63) NOT NULL DEFAULT 'UnknownEvent',
+    prNumber INT UNSIGNED DEFAULT NULL,
+    prHeadRepo INT UNSIGNED DEFAULT NULL,
+    prHeadRef VARCHAR(255) DEFAULT NULL,
     internal INT, -- internal (project,class) build number, as opposed to global build number
     created TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
     triggerUser INT UNSIGNED DEFAULT 0, -- not necessarily REFERENCES users(uid), because may not have registered on Poggit yet

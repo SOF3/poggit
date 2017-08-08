@@ -22,8 +22,9 @@ namespace poggit\ci\builder;
 
 use Phar;
 use poggit\ci\api\ProjectSubToggleAjax;
-use poggit\ci\cause\V2BuildCause;
-use poggit\ci\cause\V2PushBuildCause;
+use poggit\ci\cause\BuildCause;
+use poggit\ci\cause\PullRequestCause;
+use poggit\ci\cause\PushBuildCause;
 use poggit\ci\lint\BuildResult;
 use poggit\ci\lint\CloseTagLint;
 use poggit\ci\lint\DirectStdoutLint;
@@ -90,7 +91,7 @@ abstract class ProjectBuilder {
      * @param WebhookProjectModel[] $projects
      * @param string[]              $commitMessages
      * @param string[]              $changedFiles
-     * @param V2BuildCause          $cause
+     * @param BuildCause            $cause
      * @param int                   $triggerUserId
      * @param callable              $buildNumber
      * @param int                   $buildClass
@@ -99,7 +100,7 @@ abstract class ProjectBuilder {
      *
      * @throws WebhookException
      */
-    public static function buildProjects(RepoZipball $zipball, stdClass $repoData, array $projects, array $commitMessages, array $changedFiles, V2BuildCause $cause, int $triggerUserId, callable $buildNumber, int $buildClass, string $branch, string $sha) {
+    public static function buildProjects(RepoZipball $zipball, stdClass $repoData, array $projects, array $commitMessages, array $changedFiles, BuildCause $cause, int $triggerUserId, callable $buildNumber, int $buildClass, string $branch, string $sha) {
         $cnt = (int) Mysql::query("SELECT COUNT(*) AS cnt FROM builds WHERE triggerUser = ? AND 
             UNIX_TIMESTAMP() - UNIX_TIMESTAMP(created) < 604800", "i", $triggerUserId)[0]["cnt"];
 
@@ -192,7 +193,7 @@ abstract class ProjectBuilder {
         }
     }
 
-    private function init(RepoZipball $zipball, stdClass $repoData, WebhookProjectModel $project, V2BuildCause $cause, int $triggerUserId, callable $buildNumberGetter, int $buildClass, string $branch, string $sha) {
+    private function init(RepoZipball $zipball, stdClass $repoData, WebhookProjectModel $project, BuildCause $cause, int $triggerUserId, callable $buildNumberGetter, int $buildClass, string $branch, string $sha) {
         $IS_PMMP = $repoData->id === 69691727;
         $buildId = (int) Mysql::query("SELECT IFNULL(MAX(buildId), 19200) + 1 AS nextBuildId FROM builds")[0]["nextBuildId"];
         Mysql::query("INSERT INTO builds (buildId, projectId, buildsAfterThis) VALUES (?, ?, ?)", "iii", $buildId, $project->projectId, self::$moreBuilds);
@@ -294,16 +295,37 @@ abstract class ProjectBuilder {
             $rsrId = ResourceManager::NULL_RESOURCE;
             @unlink($rsrFile);
         }
-        Mysql::query("UPDATE builds SET resourceId = ?, class = ?, branch = ?, sha = ?, cause = ?, internal = ?, triggerUser = ? WHERE buildId = ?",
-            "iisssiii", $rsrId, $buildClass, $branch, $sha, json_encode($cause, JSON_UNESCAPED_SLASHES), $buildNumber,
-            $triggerUserId, $buildId);
+        $updates = [
+            "resourceId" => ["i", $rsrId],
+            "class" => ["i", $buildClass],
+            "branch" => ["s", $branch],
+            "sha" => ["s", $sha],
+            "triggerEvent" => ["s", $cause instanceof PullRequestCause ? "PullRequestEvent" : "PushEvent"],
+            "internal" => ["i", $buildNumber],
+            "triggerUser" => ["i", $triggerUserId],
+        ];
+        if($cause instanceof PullRequestCause) {
+            $updates["prNumber"] = ["i", $cause->prNumber];
+            $updates["prHeadOwner"] = ["i", $cause->headOwner];
+            $updates["prHeadRef"] = ["s", $cause->headRef];
+        }
+        $columns = implode(", ", array_map(function ($column) {
+            return "$column = ?";
+        }, array_keys($updates)));
+        $types = "";
+        $args = [];
+        foreach($updates as list($type, $value)) {
+            $types .= $type;
+            $args[] = $value;
+        }
+        Mysql::query("UPDATE builds SET $columns WHERE buildId = ?", $types, ...$args);
         $buildResult->storeMysql($buildId);
         $event = new BuildCompleteTimeLineEvent;
         $event->buildId = $buildId;
         $event->name = $project->name;
         $eventId = $event->dispatch();
         Mysql::query("INSERT INTO user_timeline (eventId, userId) SELECT ?, userId FROM project_subs WHERE projectId = ? AND level >= ?",
-            "iii", $eventId, $project->projectId, $cause instanceof V2PushBuildCause ? ProjectSubToggleAjax::LEVEL_DEV_BUILDS : ProjectSubToggleAjax::LEVEL_DEV_AND_PR_BUILDS);
+            "iii", $eventId, $project->projectId, $cause instanceof PushBuildCause ? ProjectSubToggleAjax::LEVEL_DEV_BUILDS : ProjectSubToggleAjax::LEVEL_DEV_AND_PR_BUILDS);
 
         $lintStats = [];
         foreach($buildResult->statuses as $status) {
